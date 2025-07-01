@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <title>Бібліотека (повний варіант)</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin:0; padding:0; }
+    nav { display: flex; justify-content: center; background-color: #333; }
+    nav button { padding: 10px 20px; margin: 5px; background: #fff; border: none; cursor: pointer; }
+    .section { display: none; padding: 20px; }
+    .section.active { display: block; }
+    form label { display: block; margin: 10px 0 5px; font-weight: bold; }
+    form input, form select { width: 300px; padding: 5px; }
+    form button { margin-top: 15px; padding: 8px 15px; }
+    table { margin-top: 20px; border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background-color: #eee; }
+    .action-btn { margin-right: 5px; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <button onclick="showSection('books')">Книги</button>
+  <button onclick="showSection('readers')">Читачі</button>
+  <button onclick="showSection('issues')">Видачі</button>
+</nav>
+
+<!-- Секція книг -->
+<div id="books" class="section active">
+  <h2>Книги</h2>
+  <form id="bookForm">
+    <input type="hidden" id="bookIndex" value="-1" />
+    <label for="bookTitle">Назва</label>
+    <input type="text" id="bookTitle" required />
+
+    <label for="bookAuthor">Автор</label>
+    <input type="text" id="bookAuthor" required />
+
+    <label for="bookPublisher">Видавництво</label>
+    <input type="text" id="bookPublisher" required />
+
+    <label for="bookIdentifier">Ідентифікатор</label>
+    <input type="text" id="bookIdentifier" required />
+
+    <label for="bookTopic">Тема</label>
+    <input type="text" id="bookTopic" required />
+
+    <button type="submit">Додати / Зберегти книгу</button>
+    <button type="button" id="bookFormCancel" style="display:none;">Скасувати</button>
+  </form>
+
+  <table id="booksTable">
+    <thead>
+      <tr>
+        <th>ID</th><th>Назва</th><th>Автор</th><th>Видавництво</th><th>Ідентифікатор</th><th>Тема</th><th>Дії</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- Секція читачів -->
+<div id="readers" class="section">
+  <h2>Читачі</h2>
+  <form id="readerForm">
+    <input type="hidden" id="readerIndex" value="-1" />
+    <label for="readerName">ПІБ</label>
+    <input type="text" id="readerName" required />
+
+    <label for="readerAddress">Адреса</label>
+    <input type="text" id="readerAddress" required />
+
+    <label for="readerPhone">Телефон</label>
+    <input type="text" id="readerPhone" required />
+
+    <label for="readerReturnMark">Відмітка про повернення</label>
+    <input type="text" id="readerReturnMark" required />
+
+    <label for="readerPassport">Номер паспорта</label>
+    <input type="text" id="readerPassport" required />
+
+    <button type="submit">Додати / Зберегти читача</button>
+    <button type="button" id="readerFormCancel" style="display:none;">Скасувати</button>
+  </form>
+
+  <table id="readersTable">
+    <thead>
+      <tr>
+        <th>ID</th><th>ПІБ</th><th>Адреса</th><th>Телефон</th><th>Відмітка про повернення</th><th>Номер паспорта</th><th>Дії</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- Секція видач -->
+<div id="issues" class="section">
+  <h2>Видачі</h2>
+  <form id="issueForm">
+    <input type="hidden" id="issueIndex" value="-1" />
+    <label for="issueBook">Книга</label>
+    <select id="issueBook" required>
+      <option value="">Оберіть книгу</option>
+    </select>
+
+    <label for="issueReader">Читач</label>
+    <select id="issueReader" required>
+      <option value="">Оберіть читача</option>
+    </select>
+
+    <label for="issueDate">Дата видачі</label>
+    <input type="date" id="issueDate" required />
+
+    <label for="issueDeadline">Термін повернення</label>
+    <input type="date" id="issueDeadline" required />
+
+    <label for="issueReturnDate">Реальний термін повернення</label>
+    <input type="date" id="issueReturnDate" />
+
+    <button type="submit">Додати / Зберегти видачу</button>
+    <button type="button" id="issueFormCancel" style="display:none;">Скасувати</button>
+  </form>
+
+  <table id="issuesTable">
+    <thead>
+      <tr>
+        <th>ID</th><th>Книга</th><th>Читач</th><th>Дата видачі</th><th>Термін повернення</th><th>Реальний термін повернення</th><th>Дії</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+  // --- Загальна логіка ---
+  function showSection(id) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  // Делегування для кнопок "Видалити" і "Редагувати"
+  document.body.addEventListener('click', e => {
+    if (e.target.classList.contains('deleteBtn')) {
+      const tr = e.target.closest('tr');
+      const tableId = tr.closest('table').id;
+      if (tableId === 'booksTable') BookManager.delete(+tr.dataset.index);
+      if (tableId === 'readersTable') ReaderManager.delete(+tr.dataset.index);
+      if (tableId === 'issuesTable') IssueManager.delete(+tr.dataset.index);
+    }
+    if (e.target.classList.contains('editBtn')) {
+      const tr = e.target.closest('tr');
+      const tableId = tr.closest('table').id;
+      if (tableId === 'booksTable') BookManager.edit(+tr.dataset.index);
+      if (tableId === 'readersTable') ReaderManager.edit(+tr.dataset.index);
+      if (tableId === 'issuesTable') IssueManager.edit(+tr.dataset.index);
+    }
+  });
+
+  // --- Класи менеджери ---
+
+  class BookManager {
+    static data = [];
+    static nextId = 1;
+
+    static load() {
+      const json = localStorage.getItem('books');
+      if (json) {
+        this.data = JSON.parse(json);
+        this.nextId = this.data.reduce((max, b) => b.id > max ? b.id : max, 0) + 1;
+      }
+      this.render();
+      this.updateSelect();
+    }
+
+    static save() {
+      localStorage.setItem('books', JSON.stringify(this.data));
+      this.updateSelect();
+      this.syncServer();
+    }
+
+    static add(book) {
+      book.id = this.nextId++;
+      this.data.push(book);
+      this.save();
+      this.render();
+    }
+
+    static update(index, book) {
+      const idx = this.data.findIndex(b => b.id === index);
+      if (idx >= 0) {
+        this.data[idx] = { id: index, ...book };
+        this.save();
+        this.render();
+      }
+    }
+
+    static delete(index) {
+      this.data = this.data.filter(b => b.id !== index);
+      this.save();
+      this.render();
+      IssueManager.cleanupDeletedBooks();
+    }
+
+    static edit(index) {
+      const book = this.data.find(b => b.id === index);
+      if (!book) return;
+      document.getElementById('bookIndex').value = book.id;
+      document.getElementById('bookTitle').value = book.title;
+      document.getElementById('bookAuthor').value = book.author;
+      document.getElementById('bookPublisher').value = book.publisher;
+      document.getElementById('bookIdentifier').value = book.identifier;
+      document.getElementById('bookTopic').value = book.topic;
+      document.getElementById('bookFormCancel').style.display = 'inline';
+    }
+
+    static render() {
+      const tbody = document.querySelector('#booksTable tbody');
+      tbody.innerHTML = '';
+      this.data.forEach(book => {
+        const tr = document.createElement('tr');
+        tr.dataset.index = book.id;
+        tr.innerHTML = `
+          <td>${book.id}</td>
+          <td>${book.title}</td>
+          <td>${book.author}</td>
+          <td>${book.publisher}</td>
+          <td>${book.identifier}</td>
+          <td>${book.topic}</td>
+          <td>
+            <button class="action-btn editBtn">Редагувати</button>
+            <button class="action-btn deleteBtn">Видалити</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+      this.updateSelect();
+    }
+
+    static updateSelect() {
+      const select = document.getElementById('issueBook');
+      select.querySelectorAll('option:not(:first-child)').forEach(o => o.remove());
+      this.data.forEach(book => {
+        const opt = document.createElement('option');
+        opt.value = book.id;
+        opt.textContent = `${book.title} (ID: ${book.id})`;
+        select.appendChild(opt);
+      });
+    }
+
+    static syncServer() {
+      // Імітація POST/PUT/DELETE запитів, замініть URL та методи для свого сервера
+      // fetch('http://localhost:3000/books', {method: 'POST', body: JSON.stringify(this.data)})
+      // .then(...)
+    }
+  }
+
+  class ReaderManager {
+    static data = [];
+    static nextId = 1;
+
+    static load() {
+      const json = localStorage.getItem('readers');
+      if (json) {
+        this.data = JSON.parse(json);
+        this.nextId = this.data.reduce((max, r) => r.id > max ? r.id : max, 0) + 1;
+      }
+      this.render();
+      this.updateSelect();
+    }
+
+    static save() {
+      localStorage.setItem('readers', JSON.stringify(this.data));
+      this.updateSelect();
+      this.syncServer();
+    }
+
+    static add(reader) {
+      reader.id = this.nextId++;
+      this.data.push(reader);
+      this.save();
+      this.render();
+    }
+
+    static update(index, reader) {
+      const idx = this.data.findIndex(r => r.id === index);
+      if (idx >= 0) {
+        this.data[idx] = { id: index, ...reader };
+        this.save();
+        this.render();
+      }
+    }
+
+    static delete(index) {
+      this.data = this.data.filter(r => r.id !== index);
+      this.save();
+      this.render();
+      IssueManager.cleanupDeletedReaders();
+    }
+
+    static edit(index) {
+      const r = this.data.find(r => r.id === index);
+      if (!r) return;
+      document.getElementById('readerIndex').value = r.id;
+      document.getElementById('readerName').value = r.name;
+      document.getElementById('readerAddress').value = r.address;
+      document.getElementById('readerPhone').value = r.phone;
+      document.getElementById('readerReturnMark').value = r.returnMark;
+      document.getElementById('readerPassport').value = r.passport;
+      document.getElementById('readerFormCancel').style.display = 'inline';
+    }
+
+    static render() {
+      const tbody = document.querySelector('#readersTable tbody');
+      tbody.innerHTML = '';
+      this.data.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.dataset.index = r.id;
+        tr.innerHTML = `
+          <td>${r.id}</td>
+          <td>${r.name}</td>
+          <td>${r.address}</td>
+          <td>${r.phone}</td>
+          <td>${r.returnMark}</td>
+          <td>${r.passport}</td>
+          <td>
+            <button class="action-btn editBtn">Редагувати</button>
+            <button class="action-btn deleteBtn">Видалити</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+      this.updateSelect();
+    }
+
+    static updateSelect() {
+      const select = document.getElementById('issueReader');
+      select.querySelectorAll('option:not(:first-child)').forEach(o => o.remove());
+      this.data.forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r.id;
+        opt.textContent = `${r.name} (ID: ${r.id})`;
+        select.appendChild(opt);
+      });
+    }
+
+    static syncServer() {
+      // Аналогічно, замініть на ваші запити
+    }
+  }
+
+  class IssueManager {
+    static data = [];
+    static nextId = 1;
+
+    static load() {
+      const json = localStorage.getItem('issues');
+      if (json) {
+        this.data = JSON.parse(json);
+        this.nextId = this.data.reduce((max, i) => i.id > max ? i.id : max, 0) + 1;
+      }
+      this.render();
+    }
+
+    static save() {
+      localStorage.setItem('issues', JSON.stringify(this.data));
+      this.syncServer();
+    }
+
+    static add(issue) {
+      issue.id = this.nextId++;
+      this.data.push(issue);
+      this.save();
+      this.render();
+    }
+
+    static update(index, issue) {
+      const idx = this.data.findIndex(i => i.id === index);
+      if (idx >= 0) {
+        this.data[idx] = { id: index, ...issue };
+        this.save();
+        this.render();
+      }
+    }
+
+    static delete(index) {
+      this.data = this.data.filter(i => i.id !== index);
+      this.save();
+      this.render();
+    }
+
+    static edit(index) {
+      const i = this.data.find(i => i.id === index);
+      if (!i) return;
+      document.getElementById('issueIndex').value = i.id;
+      document.getElementById('issueBook').value = i.bookId;
+      document.getElementById('issueReader').value = i.readerId;
+      document.getElementById('issueDate').value = i.issueDate;
+      document.getElementById('issueDeadline').value = i.deadline;
+      document.getElementById('issueReturnDate').value = i.returnDate || '';
+      document.getElementById('issueFormCancel').style.display = 'inline';
+    }
+
+    static render() {
+      const tbody = document.querySelector('#issuesTable tbody');
+      tbody.innerHTML = '';
+      this.data.forEach(i => {
+        const book = BookManager.data.find(b => b.id === i.bookId);
+        const reader = ReaderManager.data.find(r => r.id === i.readerId);
+
+        const tr = document.createElement('tr');
+        tr.dataset.index = i.id;
+        tr.innerHTML = `
+          <td>${i.id}</td>
+          <td>${book ? book.title : 'Видалена книга'}</td>
+          <td>${reader ? reader.name : 'Видалений читач'}</td>
+          <td>${i.issueDate}</td>
+          <td>${i.deadline}</td>
+          <td>${i.returnDate || ''}</td>
+          <td>
+            <button class="action-btn editBtn">Редагувати</button>
+            <button class="action-btn deleteBtn">Видалити</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    static cleanupDeletedBooks() {
+      // Якщо книга видалена, видалити відповідні видачі
+      this.data = this.data.filter(i => BookManager.data.find(b => b.id === i.bookId));
+      this.save();
+      this.render();
+    }
+
+    static cleanupDeletedReaders() {
+      // Якщо читач видалений, видалити відповідні видачі
+      this.data = this.data.filter(i => ReaderManager.data.find(r => r.id === i.readerId));
+      this.save();
+      this.render();
+    }
+
+    static syncServer() {
+      // Аналогічно, псевдо-запити
+    }
+  }
+
+  // --- Ініціалізація і обробка форм ---
+
+  // Книги
+  document.getElementById('bookForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const index = +document.getElementById('bookIndex').value;
+    const book = {
+      title: document.getElementById('bookTitle').value.trim(),
+      author: document.getElementById('bookAuthor').value.trim(),
+      publisher: document.getElementById('bookPublisher').value.trim(),
+      identifier: document.getElementById('bookIdentifier').value.trim(),
+      topic: document.getElementById('bookTopic').value.trim(),
+    };
+    if (index === -1) {
+      BookManager.add(book);
+    } else {
+      BookManager.update(index, book);
+    }
+    e.target.reset();
+    document.getElementById('bookIndex').value = -1;
+    document.getElementById('bookFormCancel').style.display = 'none';
+  });
+  document.getElementById('bookFormCancel').addEventListener('click', e => {
+    document.getElementById('bookForm').reset();
+    document.getElementById('bookIndex').value = -1;
+    e.target.style.display = 'none';
+  });
+
+  // Читачі
+  document.getElementById('readerForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const index = +document.getElementById('readerIndex').value;
+    const reader = {
+      name: document.getElementById('readerName').value.trim(),
+      address: document.getElementById('readerAddress').value.trim(),
+      phone: document.getElementById('readerPhone').value.trim(),
+      returnMark: document.getElementById('readerReturnMark').value.trim(),
+      passport: document.getElementById('readerPassport').value.trim(),
+    };
+    if (index === -1) {
+      ReaderManager.add(reader);
+    } else {
+      ReaderManager.update(index, reader);
+    }
+    e.target.reset();
+    document.getElementById('readerIndex').value = -1;
+    document.getElementById('readerFormCancel').style.display = 'none';
+  });
+  document.getElementById('readerFormCancel').addEventListener('click', e => {
+    document.getElementById('readerForm').reset();
+    document.getElementById('readerIndex').value = -1;
+    e.target.style.display = 'none';
+  });
+
+  // Видачі
+  document.getElementById('issueForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const index = +document.getElementById('issueIndex').value;
+    const issue = {
+      bookId: +document.getElementById('issueBook').value,
+      readerId: +document.getElementById('issueReader').value,
+      issueDate: document.getElementById('issueDate').value,
+      deadline: document.getElementById('issueDeadline').value,
+      returnDate: document.getElementById('issueReturnDate').value || null,
+    };
+    if (index === -1) {
+      IssueManager.add(issue);
+    } else {
+      IssueManager.update(index, issue);
+    }
+    e.target.reset();
+    document.getElementById('issueIndex').value = -1;
+    document.getElementById('issueFormCancel').style.display = 'none';
+  });
+  document.getElementById('issueFormCancel').addEventListener('click', e => {
+    document.getElementById('issueForm').reset();
+    document.getElementById('issueIndex').value = -1;
+    e.target.style.display = 'none';
+  });
+
+  // Ініціалізація даних при завантаженні сторінки
+  window.addEventListener('load', () => {
+    BookManager.load();
+    ReaderManager.load();
+    IssueManager.load();
+  });
+</script>
+
+</body>
+</html>
